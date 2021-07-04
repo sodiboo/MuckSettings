@@ -1,0 +1,7 @@
+{
+    "name": "SettingsApi",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/Terrain2/MuckSettings",
+    "description": "Settings API for allowing mods to add settings.",
+    "dependencies": []
+}
