@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -47,6 +49,11 @@ namespace MuckSettings
 
             List<RectTransform> scrollSettings = new List<RectTransform>();
 
+            public void AddControlSetting(string name, ConfigEntry<KeyCode> configEntry)
+            {
+                AddControlSetting(name, configEntry.Value, key => configEntry.Value = key);
+            }
+
             public void AddControlSetting(string name, KeyCode defaultValue, Action<KeyCode> update)
             {
                 using (var setting = new SettingsItem<ControlSetting>(this, Main.ControlSetting, name))
@@ -54,6 +61,11 @@ namespace MuckSettings
                     setting.obj.SetSetting(defaultValue);
                     setting.obj.onClick.AddListener(() => update(setting.obj.currentKey));
                 }
+            }
+
+            public void AddSliderSetting(string name, ConfigEntry<int> configEntry, int min, int max)
+            {
+                AddSliderSetting(name, configEntry.Value, min, max, value => configEntry.Value = value);
             }
 
             public void AddSliderSetting(string name, int defaultValue, int min, int max, Action<int> update)
@@ -65,6 +77,22 @@ namespace MuckSettings
                     setting.obj.SetSettings(defaultValue);
                     setting.obj.onClick.AddListener(() => update(setting.obj.currentSetting));
                 }
+            }
+
+            public void AddScrollSetting<T>(string name, ConfigEntry<T> configEntry) where T : Enum
+            {
+                AddScrollSetting<T>(name, configEntry.Value, value => configEntry.Value = value);
+            }
+
+            public void AddScrollSetting<T>(string name, T defaultValue, Action<T> update) where T : Enum
+            {
+                AddScrollSetting<T>(name, Array.IndexOf(Enum.GetNames(typeof(T)), defaultValue.ToString()), value => update((T)Enum.ToObject(typeof(T), value)));
+            }
+
+            public void AddScrollSetting<T>(string name, int index, Action<int> update) where T : Enum
+            {
+                var names = Enum.GetNames(typeof(T));
+                AddScrollSetting(name, names, index, update);
             }
 
             public void AddScrollSetting(string name, string[] values, int defaultIndex, Action<int> update)
@@ -82,6 +110,11 @@ namespace MuckSettings
                 }
             }
 
+            public void AddBoolSetting(string name, ConfigEntry<bool> configEntry)
+            {
+                AddBoolSetting(name, configEntry.Value, value => configEntry.Value = value);
+            }
+
             public void AddBoolSetting(string name, bool defaultValue, Action<bool> update)
             {
                 using (var setting = new SettingsItem<OneBoolSetting>(this, Main.BoolSetting, name))
@@ -89,6 +122,15 @@ namespace MuckSettings
                     setting.obj.SetSetting(defaultValue);
                     setting.obj.onClick.AddListener(() => update(IntToBool(setting.obj.currentSetting)));
                 }
+            }
+
+            public void AddTwoBoolSetting(string name, string label1, string label2, ConfigEntry<bool> configEntry1, ConfigEntry<bool> configEntry2)
+            {
+                AddTwoBoolSetting(name, label1, label2, configEntry1.Value, configEntry2.Value, (value1, value2) =>
+                {
+                    configEntry1.Value = value1;
+                    configEntry2.Value = value2;
+                });
             }
 
             public void AddTwoBoolSetting(string name, string label1, string label2, bool defaultValue1, bool defaultValue2, Action<bool, bool> update)
@@ -147,15 +189,15 @@ namespace MuckSettings
 
         public static void Graphics(Page page)
         {
-            page.AddScrollSetting("Shadow Quality", Enum.GetNames(typeof(Settings.ShadowQuality)), SaveManager.Instance.state.shadowQuality, UpdateShadowQuality);
-            page.AddScrollSetting("Shadow Resolution", Enum.GetNames(typeof(Settings.ShadowResolution)), SaveManager.Instance.state.shadowResolution, UpdateShadowResolution);
-            page.AddScrollSetting("Shadow Distance", Enum.GetNames(typeof(Settings.ShadowDistance)), SaveManager.Instance.state.shadowDistance, UpdateShadowDistance);
-            page.AddScrollSetting("Shadow Cascades", Enum.GetNames(typeof(Settings.ShadowCascades)), SaveManager.Instance.state.shadowCascade, UpdateShadowCascades);
-            page.AddScrollSetting("Texture Resolution", Enum.GetNames(typeof(Settings.TextureResolution)), SaveManager.Instance.state.textureQuality, UpdateTextureRes);
-            page.AddScrollSetting("Anti Aliasing", Enum.GetNames(typeof(Settings.AntiAliasing)), SaveManager.Instance.state.antiAliasing, UpdateAntiAliasing);
+            page.AddScrollSetting<ShadowQuality>("Shadow Quality", SaveManager.Instance.state.shadowQuality, UpdateShadowQuality);
+            page.AddScrollSetting<ShadowResolution>("Shadow Resolution", SaveManager.Instance.state.shadowResolution, UpdateShadowResolution);
+            page.AddScrollSetting<ShadowDistance>("Shadow Distance", SaveManager.Instance.state.shadowDistance, UpdateShadowDistance);
+            page.AddScrollSetting<ShadowCascades>("Shadow Cascades", SaveManager.Instance.state.shadowCascade, UpdateShadowCascades);
+            page.AddScrollSetting<TextureResolution>("Texture Resolution", SaveManager.Instance.state.textureQuality, UpdateTextureRes);
+            page.AddScrollSetting<AntiAliasing>("Anti Aliasing", SaveManager.Instance.state.antiAliasing, UpdateAntiAliasing);
 
             page.AddBoolSetting("Soft Particles", SaveManager.Instance.state.softParticles, UpdateSoftParticles);
-            page.AddScrollSetting("Bloom", Enum.GetNames(typeof(Settings.Bloom)), SaveManager.Instance.state.bloom, UpdateBloom);
+            page.AddScrollSetting<Bloom>("Bloom", SaveManager.Instance.state.bloom, UpdateBloom);
 
             page.AddBoolSetting("Motion Blur", SaveManager.Instance.state.motionBlur, UpdateMotionBlur);
             page.AddBoolSetting("Ambient Occlusion", SaveManager.Instance.state.ambientOcclusion, UpdateAO);
@@ -166,8 +208,8 @@ namespace MuckSettings
             page.AddResolutionSetting("Resolution", Screen.resolutions, Screen.currentResolution);
             page.AddBoolSetting("Fullscreen", Screen.fullScreen, UpdateFullscreen);
 
-            page.AddScrollSetting("Fullscreen Mode", Enum.GetNames(typeof(FullScreenMode)), SaveManager.Instance.state.fullscreenMode, UpdateFullscreenMode);
-            page.AddScrollSetting("VSync", Enum.GetNames(typeof(Settings.VSync)), SaveManager.Instance.state.vSync, UpdateVSync);
+            page.AddScrollSetting<FullScreenMode>("Fullscreen Mode", SaveManager.Instance.state.fullscreenMode, UpdateFullscreenMode);
+            page.AddScrollSetting<VSync>("VSync", SaveManager.Instance.state.vSync, UpdateVSync);
             page.AddSliderSetting("Max FPS", SaveManager.Instance.state.fpsLimit, 30, 500, UpdateMaxFps);
         }
 

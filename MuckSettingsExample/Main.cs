@@ -1,4 +1,5 @@
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using System.IO;
@@ -21,9 +22,9 @@ namespace MuckSettingsExample
         internal readonly Harmony harmony;
         internal readonly Assembly assembly;
         public readonly string modFolder;
-        public static string config;
 
-        public static KeyCode bind = KeyCode.X;
+        public static ConfigFile config = new ConfigFile(Path.Combine(Paths.ConfigPath, "example.cfg"), true);
+        public static ConfigEntry<KeyCode> example = config.Bind<KeyCode>("Example", "example", KeyCode.X, "Example button that sends a chat message.");
 
         Main()
         {
@@ -32,24 +33,10 @@ namespace MuckSettingsExample
             assembly = Assembly.GetExecutingAssembly();
             modFolder = Path.GetDirectoryName(assembly.Location);
 
-            config = Path.Combine(modFolder, "config");
-
-            if (File.Exists(config))
-            {
-                bind = (KeyCode)int.Parse(File.ReadAllText(config));
-            }
-            else
-            {
-                File.WriteAllText(config, ((int)bind).ToString());
-            }
+            // this line is very important, anyone using this as an example shouldn't forget to copy-paste this as well!
+            config.SaveOnConfigSet = true;
 
             harmony.PatchAll(assembly);
-        }
-
-        public static void UpdateBind(KeyCode newBind)
-        {
-            bind = newBind;
-            File.WriteAllText(config, ((int)bind).ToString());
         }
     }
 
@@ -59,12 +46,12 @@ namespace MuckSettingsExample
         [HarmonyPatch(typeof(MuckSetting), "Controls"), HarmonyPrefix]
         static void Controls(MuckSetting.Page page)
         {
-            page.AddControlSetting("PoC", Main.bind, Main.UpdateBind);
+            page.AddControlSetting("Example", Main.example);
         }
 
         [HarmonyPatch(typeof(PlayerInput), "Update"), HarmonyPostfix]
         static void PlayerInput() {
-            if (Input.GetKeyDown(Main.bind)) {
+            if (Input.GetKeyDown(Main.example.Value)) {
                 ChatBox.Instance.AppendMessage(-1, "You pressed the button!", "");
             }
         }
